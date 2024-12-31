@@ -48,16 +48,17 @@ class PortData {
   final _dataController = StreamController();
 
   Uint8List _data = Uint8List.fromList([]);
-
+  SerialPortReader? reader;
   String? address;
   Timer? _timer;
   int _delay = 0;
   int _parity = SerialPortParity.none;
   int _speed = 115200;
+  int _stopBits = 1;
   String? _error;
 
   setPort(String? p) {
-    _error = null;
+    _error = "Could not connect";
     if (p == null && address != null) {
       p = address;
     }
@@ -85,7 +86,7 @@ class PortData {
       _timer!.cancel();
     }
 
-    SerialPortReader reader = SerialPortReader(
+    reader = SerialPortReader(
       port!,
       timeout: 10000,
     );
@@ -99,24 +100,26 @@ class PortData {
       SerialPortConfig config = port!.config;
       config.baudRate = _speed;
       config.parity = _parity;
+      config.stopBits = _stopBits;
       port!.config = config;
+
     } on SerialPortError catch (e) {
-      _error = 'error setting port config "${e}"';
+      _error = 'Error setting port config "${e}"';
     }
     
-    
+    _error = null;
 
-    try {
-      reader.stream.handleError((err) {
-        // maybe disconnection ?
-        //save the port, close and dispose
-        reader.close();
-        port?.close();
-        port?.dispose();
-      });
-    } catch (e) {}
+    reader?.stream.handleError((err) {
+      // maybe disconnection ?
+      _error = 'Error reading stream "${err}"';
+      //save the port, close and dispose
+      reader?.close();
+      port?.close();
+      port?.dispose();
+    });
 
-    reader.stream.listen((data) {
+
+    reader?.stream.listen((data) {
       BytesBuilder b = BytesBuilder();
       b.add(_data);
       b.add(data);
@@ -124,7 +127,7 @@ class PortData {
       _dataController.add(_data);
     }, onError: (error) {
       if (error is SerialPortError) {
-        reader.close();
+        reader?.close();
         _error = 'Error reading serial port ${error}';
         port?.close();
         port?.dispose();
@@ -137,6 +140,14 @@ class PortData {
     });
   }
 
+  close() {
+    reader?.close();
+    port?.close();
+    port?.dispose();
+    port = null;
+    _error = null;
+  }
+
   // TODO add a command buffer to access with up arrow
   retry(Timer timer) {
     setPort(null);
@@ -144,7 +155,7 @@ class PortData {
 
   send(String r) {
     if (port != null) {
-      r = r + "\r\n";
+      r = "$r\r\n";
       if (_delay > 0) {
         for (final (index, item) in r.codeUnits.indexed) {
           Timer(Duration(milliseconds: _delay * index), () {
@@ -154,6 +165,11 @@ class PortData {
       } else {
         port!.write(Uint8List.fromList(r.codeUnits));
       }
+    } else {
+      _error = "Connect to a serial port first";
+      Timer(Duration(seconds: 5), () {
+        _error = null;
+      });
     }
   }
 
@@ -167,6 +183,15 @@ class PortData {
       config.baudRate = speed;
       port!.config = config;
       _speed = speed;
+    }
+  }
+
+  setStop(int? stop) {
+    if (port != null && stop != null) {
+      SerialPortConfig config = port!.config;
+      config.stopBits = stop;
+      port!.config = config;
+      _stopBits = stop;
     }
   }
 
@@ -240,6 +265,11 @@ class _MyHomePageState extends State<MyHomePage> {
       230400
     ].map((p) => DropdownMenuEntry(value: p, label: p.toString())).toList();
 
+    List<DropdownMenuEntry<int>> stopBits = [
+      1,
+      2,
+    ].map((p) => DropdownMenuEntry(value: p, label: p.toString())).toList();
+
     List<DropdownMenuEntry<int>> parities = [
       SerialPortParity.even,
       SerialPortParity.odd,
@@ -301,6 +331,35 @@ class _MyHomePageState extends State<MyHomePage> {
                       });
                     },
                   ),
+                  portData.port != null ? 
+                  Padding(padding: EdgeInsets.all(2),
+                    child: IconButton(
+                      style: ElevatedButton.styleFrom(
+                        elevation: 1,
+                      ),
+                      tooltip: "Close connection",
+                      onPressed: () {
+                        portData.close();
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                    )
+                  )
+                  :
+                  Padding(padding: EdgeInsets.all(2), 
+                    child: portData.address != null ? 
+                      IconButton(
+                        style: ElevatedButton.styleFrom(
+                          elevation: 1,
+                        ),
+                        tooltip: "Connect",
+                        onPressed: () {
+                          portData.setPort(null);
+                        },
+                        icon: const Icon(Icons.check_circle),
+                      )
+                    :
+                    Padding(padding: EdgeInsets.all(0))
+                  ),
                   DropdownMenu(
                     dropdownMenuEntries: speeds,
                     label: Text("Speed"),
@@ -311,6 +370,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       });
                     },
                   ),
+                  Padding(padding: EdgeInsets.all(1)),
                   DropdownMenu(
                     dropdownMenuEntries: parities,
                     label: Text("Parity"),
@@ -321,6 +381,18 @@ class _MyHomePageState extends State<MyHomePage> {
                       });
                     },
                   ),
+                  Padding(padding: EdgeInsets.all(1)),
+                  DropdownMenu(
+                    dropdownMenuEntries: stopBits,
+                    label: Text("Stop"),
+                    initialSelection: portData._stopBits,
+                    onSelected: (int? stop) {
+                      setState(() {
+                        portData.setStop(stop);
+                      });
+                    },
+                  ),
+                  Padding(padding: EdgeInsets.all(1)),
                   Expanded(
                     child: TextField(
                       decoration: InputDecoration(
@@ -356,7 +428,13 @@ class _MyHomePageState extends State<MyHomePage> {
                                 textAlign: TextAlign.start,
                               )));
                     } else if(portData._error != null) {
-                      return Text('error ${portData._error}');
+                      return Center(
+                        child:Text(
+                          'Serial error: ${portData._error}',
+                          style: TextStyle(fontSize: 24, color: Color.fromARGB(255, 247, 33, 108)),
+                        
+                        )
+                      );
                     } else {
                       if (portData.port == null) {
                         return Center(child:Text(
@@ -377,9 +455,10 @@ class _MyHomePageState extends State<MyHomePage> {
               controller: _controller,
               decoration: InputDecoration(
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(0)),
-                
                 hintText: '',
+                labelText: 'Command input',
               ),
+              enabled: portData.port != null,
               onSubmitted: (String r) {
                 portData.send(r);
                 _controller.clear();
