@@ -18,24 +18,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Surimon',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
+        colorScheme: ColorScheme.light(),
         useMaterial3: true,
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.dark(),
+        useMaterial3: true,
+      ),
+      themeMode: ThemeMode.system,
       home: const MyHomePage(title: 'S'),
     );
   }
@@ -43,15 +33,6 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -72,8 +53,11 @@ class PortData {
   Timer? _timer;
   int _delay = 0;
   int _parity = SerialPortParity.none;
+  int _speed = 115200;
+  String? _error;
 
   setPort(String? p) {
+    _error = null;
     if (p == null && address != null) {
       p = address;
     }
@@ -109,12 +93,18 @@ class PortData {
     try {
       port!.openReadWrite();
     } on SerialPortError catch (e) {
+      _error = 'Error opening port "${e}"';
     }
-
-    SerialPortConfig config = port!.config;
-    config.baudRate = 115200;
-    config.parity = _parity;
-    port!.config = config;
+    try {
+      SerialPortConfig config = port!.config;
+      config.baudRate = _speed;
+      config.parity = _parity;
+      port!.config = config;
+    } on SerialPortError catch (e) {
+      _error = 'error setting port config "${e}"';
+    }
+    
+    
 
     try {
       reader.stream.handleError((err) {
@@ -124,11 +114,9 @@ class PortData {
         port?.close();
         port?.dispose();
       });
-    } catch (e) {
-    }
+    } catch (e) {}
 
-
-    var readerSubscription = reader.stream.listen((data) {
+    reader.stream.listen((data) {
       BytesBuilder b = BytesBuilder();
       b.add(_data);
       b.add(data);
@@ -137,6 +125,7 @@ class PortData {
     }, onError: (error) {
       if (error is SerialPortError) {
         reader.close();
+        _error = 'Error reading serial port ${error}';
         port?.close();
         port?.dispose();
         port = null;
@@ -162,6 +151,8 @@ class PortData {
             port!.write(Uint8List.fromList([item]));
           });
         }
+      } else {
+        port!.write(Uint8List.fromList(r.codeUnits));
       }
     }
   }
@@ -175,6 +166,7 @@ class PortData {
       SerialPortConfig config = port!.config;
       config.baudRate = speed;
       port!.config = config;
+      _speed = speed;
     }
   }
 
@@ -189,18 +181,18 @@ class PortData {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
   List<String> ports = SerialPort.availablePorts;
 
   final FocusNode inputFocusNode = FocusNode();
 
   final PortData portData = PortData();
   TextEditingController _controller = TextEditingController();
+  TextEditingController _delayController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+
     _controller.addListener(() {
       final String text = _controller.text.toLowerCase();
       _controller.value = _controller.value.copyWith(
@@ -210,22 +202,12 @@ class _MyHomePageState extends State<MyHomePage> {
         composing: TextRange.empty,
       );
     });
+    _delayController = TextEditingController(text: portData._delay.toString());
     // defines a timer
     Timer.periodic(Duration(seconds: 1), (Timer t) {
       setState(() {
         ports = SerialPort.availablePorts;
       });
-    });
-  }
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
     });
   }
 
@@ -302,95 +284,100 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Padding(padding: EdgeInsets.all(16.0),
-            child:
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: <Widget>[
-                DropdownMenu(
-                  dropdownMenuEntries: ports,
-                  label: Text("Serial port"),
-                  initialSelection: portData.address,
-                  onSelected: (String? port) {
-                    setState(() {
-                      if (port != null) {
-                        portData.setPort(port);
-                      }
-                    });
-                  },
-                ),
-                DropdownMenu(
-                  dropdownMenuEntries: speeds,
-                  label: Text("Speed"),
-                  onSelected: (int? speed) {
-                    setState(() {
-                      portData.setSpeed(speed);
-                    });
-                  },
-                ),
-                DropdownMenu(
-                  dropdownMenuEntries: parities,
-                  label: Text("Parity"),
-                  onSelected: (int? parity) {
-                    setState(() {
-                      portData.setParity(parity);
-                    });
-                  },
-                ),
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: 'char delay (ms)',
-                      labelText: 'char delay (ms)',
-                    ),
-                    keyboardType: TextInputType.number,
-                    onSubmitted: (String val) {
-                      portData.setDelay(val);
+            Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: <Widget>[
+                  DropdownMenu(
+                    dropdownMenuEntries: ports,
+                    label: Text("Serial port"),
+                    initialSelection: portData.address,
+                    onSelected: (String? port) {
+                      setState(() {
+                        if (port != null) {
+                          portData.setPort(port);
+                        }
+                      });
                     },
                   ),
-                ),
-              ],
-            ),
+                  DropdownMenu(
+                    dropdownMenuEntries: speeds,
+                    label: Text("Speed"),
+                    initialSelection: portData._speed,
+                    onSelected: (int? speed) {
+                      setState(() {
+                        portData.setSpeed(speed);
+                      });
+                    },
+                  ),
+                  DropdownMenu(
+                    dropdownMenuEntries: parities,
+                    label: Text("Parity"),
+                    initialSelection: portData._parity,
+                    onSelected: (int? parity) {
+                      setState(() {
+                        portData.setParity(parity);
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'char delay (ms)',
+                        labelText: 'char delay (ms)',
+                      ),
+                      controller: _delayController,
+                      keyboardType: TextInputType.number,
+                      onSubmitted: (String val) {
+                        portData.setDelay(val);
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
             Expanded(
               flex: 1,
-              child: SingleChildScrollView(
-                reverse: true,
-                scrollDirection: Axis.vertical,
-                child: StreamBuilder(
-                    stream: portData.data,
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        return Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: SelectableText(
-                              '\r\n${String.fromCharCodes(snapshot.data).replaceAll("\r\n", "\n").replaceAll("\r", "\n")}',
-                              //String.fromCharCodes(snapshot.data),
-                              style: TextStyle(fontSize: 18),
-                              textAlign: TextAlign.start,
-                            ));
-                      } else {
-                        if (portData.port == null) {
-                          return Text(
-                            textAlign: TextAlign.center,
-                            "No Serial port connected",
-                            style: TextStyle(fontSize: 24),
-                          );
-                        }
-                        return Text(
-                          "No data received yet",
+              child: StreamBuilder(
+                  stream: portData.data,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return SingleChildScrollView(
+                          reverse: true,
+                          scrollDirection: Axis.vertical,
+                          child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: SelectableText(
+                                '\r\n${String.fromCharCodes(snapshot.data).replaceAll("\r\n", "\n").replaceAll("\r", "\n")}',
+                                //String.fromCharCodes(snapshot.data),
+                                style: TextStyle(fontSize: 18),
+                                textAlign: TextAlign.start,
+                              )));
+                    } else if(portData._error != null) {
+                      return Text('error ${portData._error}');
+                    } else {
+                      if (portData.port == null) {
+                        return Center(child:Text(
+                          textAlign: TextAlign.center,
+                          "No Serial port connected",
                           style: TextStyle(fontSize: 24),
-                        );
+                        ));
                       }
-                    }),
-              ),
+                      return Center(child:Text(
+                        "No data received yet",
+                        style: TextStyle(fontSize: 24),
+                      ));
+                    }
+                  }),
             ),
             TextField(
               focusNode: inputFocusNode,
               controller: _controller,
               decoration: InputDecoration(
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(0)),
+                
                 hintText: '',
               ),
               onSubmitted: (String r) {
@@ -402,11 +389,11 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: _incrementCounter,
+      //   tooltip: 'Increment',
+      //   child: const Icon(Icons.add),
+      // ),
     );
   }
 }
