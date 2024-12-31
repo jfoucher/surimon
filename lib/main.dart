@@ -321,7 +321,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: <Widget>[
                   DropdownMenu(
                     dropdownMenuEntries: ports,
-                    label: Text("Serial port"),
+                    label: Text("Serial port", style: TextStyle(color: portData.port != null ? Color(0xFF00CC11) : Color.fromARGB(255, 204, 0, 51)),),
                     initialSelection: portData.address,
                     onSelected: (String? port) {
                       setState(() {
@@ -397,8 +397,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     child: TextField(
                       decoration: InputDecoration(
                         border: OutlineInputBorder(),
-                        hintText: 'char delay (ms)',
-                        labelText: 'char delay (ms)',
+                        label: Text('Char delay (ms)'),
                       ),
                       controller: _delayController,
                       keyboardType: TextInputType.number,
@@ -421,12 +420,16 @@ class _MyHomePageState extends State<MyHomePage> {
                           scrollDirection: Axis.vertical,
                           child: Padding(
                               padding: EdgeInsets.all(16.0),
-                              child: SelectableText(
+                              child: Row(children: [
+                                Text("1\r\n2", style: TextStyle(fontSize: 18)),
+                              SelectableText(
                                 '\r\n${String.fromCharCodes(snapshot.data).replaceAll("\r\n", "\n").replaceAll("\r", "\n")}',
                                 //String.fromCharCodes(snapshot.data),
                                 style: TextStyle(fontSize: 18),
                                 textAlign: TextAlign.start,
-                              )));
+                              ),
+                              Text(snapshot.data, style: TextStyle(fontSize: 18)),
+                              ])));
                     } else if(portData._error != null) {
                       return Center(
                         child:Text(
