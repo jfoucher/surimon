@@ -236,6 +236,10 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  String hexFormat(Uint8List data) {
+    return "";
+  }
+
   @override
   Widget build(BuildContext context) {
     // This method is rerun every time setState is called, for instance as done
@@ -292,6 +296,8 @@ class _MyHomePageState extends State<MyHomePage> {
         DropdownMenuEntry(value: "no port", label: "no port", enabled: false)
       ];
     }
+
+
 
     return Scaffold(
       body: Center(
@@ -428,7 +434,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                 style: TextStyle(fontSize: 18),
                                 textAlign: TextAlign.start,
                               ),
-                              Text(snapshot.data, style: TextStyle(fontSize: 18)),
+                              Text(hexFormat(snapshot.data), style: TextStyle(fontSize: 18)),
                               ])));
                     } else if(portData._error != null) {
                       return Center(
