@@ -51,8 +51,8 @@ jobs:
 
       - name: Compress Files
         run: |
-          cd build/linux/x64/release/bundle
-          tar -czf surimon.tar.gz .
+          cd build/linux/x64/release/
+          tar -czf surimon.tar.gz bundle
 
         #9 Upload Artifacts
       - name: Upload Artifacts
@@ -60,7 +60,7 @@ jobs:
         with:
           name: Releases
           path: |
-            build/linux/x64/release/bundle/surimon.tar.gz
+            build/linux/x64/release/surimon.tar.gz
 
         #10 Extract Version
       - name: Extract version from pubspec.yaml
