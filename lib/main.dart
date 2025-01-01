@@ -1,9 +1,11 @@
 import 'dart:async';
-import 'dart:ffi';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
+import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,14 +17,18 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    ColorScheme light = ColorScheme.light();
+    Color text = Color(0xFFE4DADA);
+    ColorScheme dark = ColorScheme.dark(onSurface: text);
+
     return MaterialApp(
       title: 'Surimon',
       theme: ThemeData(
-        colorScheme: ColorScheme.light(),
+        colorScheme: light,
         useMaterial3: true,
       ),
       darkTheme: ThemeData(
-        colorScheme: ColorScheme.dark(),
+        colorScheme: dark,
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
@@ -43,11 +49,17 @@ class MyHomePage extends StatefulWidget {
 class PortData {
   SerialPort? port;
 
-  Stream get data => _dataController.stream;
+  // TODO refactor this to convert the serial data to the strings only once when the data arrives
+  Stream get lines => _linesController.stream;
 
-  final _dataController = StreamController();
+  Stream get text => _textController.stream;
 
-  Uint8List _data = Uint8List.fromList([]);
+  final _linesController = StreamController();
+  final _textController = StreamController();
+
+  String _text = "";
+  String _lines = "";
+  int linesCount = 1;
   SerialPortReader? reader;
   String? address;
   Timer? _timer;
@@ -56,6 +68,7 @@ class PortData {
   int _speed = 115200;
   int _stopBits = 1;
   String? _error;
+  List<String> buffer = [];
 
   setPort(String? p) {
     _error = "Could not connect";
@@ -73,7 +86,7 @@ class PortData {
 
     try {
       port = SerialPort(p);
-    } on SerialPortError catch (e) {
+    } on SerialPortError {
       return;
     }
 
@@ -94,7 +107,7 @@ class PortData {
     try {
       port!.openReadWrite();
     } on SerialPortError catch (e) {
-      _error = 'Error opening port "${e}"';
+      _error = 'Error opening port "$e"';
     }
     try {
       SerialPortConfig config = port!.config;
@@ -102,33 +115,40 @@ class PortData {
       config.parity = _parity;
       config.stopBits = _stopBits;
       port!.config = config;
-
     } on SerialPortError catch (e) {
-      _error = 'Error setting port config "${e}"';
+      _error = 'Error setting port config "$e"';
     }
-    
+
     _error = null;
 
     reader?.stream.handleError((err) {
       // maybe disconnection ?
-      _error = 'Error reading stream "${err}"';
+      _error = 'Error reading stream "$err"';
       //save the port, close and dispose
       reader?.close();
       port?.close();
       port?.dispose();
     });
 
-
     reader?.stream.listen((data) {
-      BytesBuilder b = BytesBuilder();
-      b.add(_data);
-      b.add(data);
-      _data = b.toBytes();
-      _dataController.add(_data);
+
+      String asString = String.fromCharCodes(data).replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+
+      int cnt = '\n'.allMatches(asString).length;
+      String l = "";
+      for (int i = linesCount; i < linesCount+cnt; i++) {
+        l = "$l$i\n";
+      }
+      _lines += l;
+      linesCount += cnt;
+      _text = "$_text$asString";
+      _linesController.add(_lines);
+      _textController.add(_text);
+
     }, onError: (error) {
       if (error is SerialPortError) {
         reader?.close();
-        _error = 'Error reading serial port ${error}';
+        _error = 'Error reading serial port $error';
         port?.close();
         port?.dispose();
         port = null;
@@ -140,6 +160,21 @@ class PortData {
     });
   }
 
+  computeLines(Uint8List data, String lines) {
+    for (int d in data) {
+      if (d == 0x07) {
+        //print('bell ${SystemSoundType.values} ok');
+        //SystemSound.play(SystemSoundType.alert);
+        FlutterPlatformAlert.playAlertSound();
+      }
+      if (d == 0x0D || d == 0x0A) {
+        linesCount++;
+        lines += "$linesCount\r\n";
+      }
+    }
+    return lines;
+  }
+
   close() {
     reader?.close();
     port?.close();
@@ -148,7 +183,6 @@ class PortData {
     _error = null;
   }
 
-  // TODO add a command buffer to access with up arrow
   retry(Timer timer) {
     setPort(null);
   }
@@ -165,6 +199,7 @@ class PortData {
       } else {
         port!.write(Uint8List.fromList(r.codeUnits));
       }
+      buffer.add(r.replaceAll("\r", "").replaceAll("\n", ""));
     } else {
       _error = "Connect to a serial port first";
       Timer(Duration(seconds: 5), () {
@@ -209,24 +244,17 @@ class _MyHomePageState extends State<MyHomePage> {
   List<String> ports = SerialPort.availablePorts;
 
   final FocusNode inputFocusNode = FocusNode();
+  final FocusNode listenerFocusNode = FocusNode();
 
+  int bufPtr = 0;
   final PortData portData = PortData();
-  TextEditingController _controller = TextEditingController();
+  final TextEditingController _controller = TextEditingController();
   TextEditingController _delayController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
 
-    _controller.addListener(() {
-      final String text = _controller.text.toLowerCase();
-      _controller.value = _controller.value.copyWith(
-        text: text,
-        selection:
-            TextSelection(baseOffset: text.length, extentOffset: text.length),
-        composing: TextRange.empty,
-      );
-    });
     _delayController = TextEditingController(text: portData._delay.toString());
     // defines a timer
     Timer.periodic(Duration(seconds: 1), (Timer t) {
@@ -236,9 +264,6 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  String hexFormat(Uint8List data) {
-    return "";
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -297,26 +322,9 @@ class _MyHomePageState extends State<MyHomePage> {
       ];
     }
 
-
-
     return Scaffold(
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -327,7 +335,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: <Widget>[
                   DropdownMenu(
                     dropdownMenuEntries: ports,
-                    label: Text("Serial port", style: TextStyle(color: portData.port != null ? Color(0xFF00CC11) : Color.fromARGB(255, 204, 0, 51)),),
+                    label: Text(
+                      "Serial port",
+                      style: TextStyle(
+                          color: portData.port != null
+                              ? Color(0xFF00CC11)
+                              : Color.fromARGB(255, 204, 0, 51)),
+                    ),
                     initialSelection: portData.address,
                     onSelected: (String? port) {
                       setState(() {
@@ -337,35 +351,33 @@ class _MyHomePageState extends State<MyHomePage> {
                       });
                     },
                   ),
-                  portData.port != null ? 
-                  Padding(padding: EdgeInsets.all(2),
-                    child: IconButton(
-                      style: ElevatedButton.styleFrom(
-                        elevation: 1,
-                      ),
-                      tooltip: "Close connection",
-                      onPressed: () {
-                        portData.close();
-                      },
-                      icon: const Icon(Icons.close_rounded),
-                    )
-                  )
-                  :
-                  Padding(padding: EdgeInsets.all(2), 
-                    child: portData.address != null ? 
-                      IconButton(
-                        style: ElevatedButton.styleFrom(
-                          elevation: 1,
-                        ),
-                        tooltip: "Connect",
-                        onPressed: () {
-                          portData.setPort(null);
-                        },
-                        icon: const Icon(Icons.check_circle),
-                      )
-                    :
-                    Padding(padding: EdgeInsets.all(0))
-                  ),
+                  portData.port != null
+                      ? Padding(
+                          padding: EdgeInsets.all(2),
+                          child: IconButton(
+                            style: ElevatedButton.styleFrom(
+                              elevation: 1,
+                            ),
+                            tooltip: "Close connection",
+                            onPressed: () {
+                              portData.close();
+                            },
+                            icon: const Icon(Icons.close_rounded),
+                          ))
+                      : Padding(
+                          padding: EdgeInsets.all(2),
+                          child: portData.address != null
+                              ? IconButton(
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 1,
+                                  ),
+                                  tooltip: "Connect",
+                                  onPressed: () {
+                                    portData.setPort(null);
+                                  },
+                                  icon: const Icon(Icons.check_circle),
+                                )
+                              : Padding(padding: EdgeInsets.all(0))),
                   DropdownMenu(
                     dropdownMenuEntries: speeds,
                     label: Text("Speed"),
@@ -416,72 +428,160 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
             Expanded(
-              flex: 1,
-              child: StreamBuilder(
-                  stream: portData.data,
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      return SingleChildScrollView(
-                          reverse: true,
-                          scrollDirection: Axis.vertical,
-                          child: Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: Row(children: [
-                                Text("1\r\n2", style: TextStyle(fontSize: 18)),
-                              SelectableText(
-                                '\r\n${String.fromCharCodes(snapshot.data).replaceAll("\r\n", "\n").replaceAll("\r", "\n")}',
-                                //String.fromCharCodes(snapshot.data),
-                                style: TextStyle(fontSize: 18),
-                                textAlign: TextAlign.start,
-                              ),
-                              Text(hexFormat(snapshot.data), style: TextStyle(fontSize: 18)),
-                              ])));
-                    } else if(portData._error != null) {
-                      return Center(
-                        child:Text(
-                          'Serial error: ${portData._error}',
-                          style: TextStyle(fontSize: 24, color: Color.fromARGB(255, 247, 33, 108)),
-                        
-                        )
-                      );
-                    } else {
-                      if (portData.port == null) {
-                        return Center(child:Text(
-                          textAlign: TextAlign.center,
-                          "No Serial port connected",
-                          style: TextStyle(fontSize: 24),
-                        ));
-                      }
-                      return Center(child:Text(
-                        "No data received yet",
-                        style: TextStyle(fontSize: 24),
-                      ));
-                    }
-                  }),
-            ),
-            TextField(
-              focusNode: inputFocusNode,
-              controller: _controller,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(0)),
-                hintText: '',
-                labelText: 'Command input',
-              ),
-              enabled: portData.port != null,
-              onSubmitted: (String r) {
-                portData.send(r);
-                _controller.clear();
-                inputFocusNode.requestFocus();
+                flex: 1,
+                child: Builder(builder: (context) {
+                  if (portData._error != null) {
+                    return Center(
+                        child: Text(
+                      'Serial error: ${portData._error}',
+                      style: TextStyle(
+                          fontSize: 24,
+                          color: Color.fromARGB(255, 247, 33, 108)),
+                    ));
+                  }
+                  if (portData.port == null) {
+                    return Center(
+                        child: Text(
+                      textAlign: TextAlign.center,
+                      "No Serial port connected",
+                      style: TextStyle(fontSize: 24),
+                    ));
+                  }
+                  // if (portData._text.isEmpty) {
+                  //   return Center(
+                  //       child: Text(
+                  //     "No data received yet",
+                  //     style: TextStyle(fontSize: 24),
+                  //   ));
+                  // }
+                  return SingleChildScrollView(
+                    reverse: true,
+                    scrollDirection: Axis.vertical,
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            StreamBuilder(
+                                stream: portData.lines,
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasData) {
+                                    return Text(snapshot.data,
+                                        style: TextStyle(
+                                            fontSize: 18,
+                                            fontFamily: 'monospace',
+                                            color: Theme.of(context)
+                                                .disabledColor
+                                        )
+                                    );
+                                  }
+                                  return Padding(padding: EdgeInsets.all(8));
+                                }),
+                            Padding(
+                                padding: EdgeInsets.all(8.0),
+                            ),
+                            Expanded(
+                              child: StreamBuilder(
+                                  stream: portData.text,
+                                  builder: (context, snapshot) {
+                                    if (snapshot.hasData) {
+                                      return SelectableText(
+                                        snapshot.data,
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontFamily: 'monospace',
+                                        ),
+                                        textAlign: TextAlign.start,
+                                      );
+                                    }
+                                    return Padding(padding: EdgeInsets.all(8));
+                                  }),
+                            ),
+                          ]),
+                    ),
+                  );
+                })),
+            CallbackShortcuts(
+              bindings: <ShortcutActivator, VoidCallback>{
+                const SingleActivator(LogicalKeyboardKey.arrowUp): () {
+                  if (bufPtr > 0) {
+                    bufPtr -= 1;
+                  }
+                  setState(() => _controller.text = portData.buffer[bufPtr]);
+                },
+                const SingleActivator(LogicalKeyboardKey.arrowDown): () {
+                  if (bufPtr < portData.buffer.length-1) {
+                    bufPtr += 1;
+                    setState(() => _controller.text = portData.buffer[bufPtr]);
+                  } else {
+                    setState(() => _controller.text = "");
+                  }
+
+                },
+                LogicalKeySet(
+                  LogicalKeyboardKey.control,
+                  LogicalKeyboardKey.keyC,
+                ): () {
+                  print('ctrl-c $bufPtr ${portData.buffer.length}');
+                  portData.send("\x03");
+                },
               },
+              child: Container(
+                decoration: BoxDecoration(
+                    border: Border(
+                        top: BorderSide(
+                            color: Theme.of(context).highlightColor)),
+                    borderRadius: BorderRadius.zero),
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: EditableText(
+                    autocorrect: false,
+                    controller: _controller,
+                    autofocus: true,
+                    focusNode: inputFocusNode,
+                    showCursor: true,
+                    scribbleEnabled: false,
+                    style: TextStyle(fontSize: 18),
+                    enableInteractiveSelection: true,
+                    cursorColor: Theme.of(context).colorScheme.primary,
+                    backgroundCursorColor:
+                        Theme.of(context).colorScheme.surface,
+                    onSubmitted: (val) {
+                      portData.send(val);
+                      _controller.clear();
+                      setState(() {
+                        bufPtr = portData.buffer.length;
+                      });
+                      inputFocusNode.requestFocus();
+                    },
+                  ),
+                ),
+              ),
+              // )
             ),
           ],
         ),
       ),
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: _incrementCounter,
-      //   tooltip: 'Increment',
-      //   child: const Icon(Icons.add),
-      // ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: portData._text.isNotEmpty
+          ? Padding(
+              padding: EdgeInsets.fromLTRB(8, 8, 8, 60),
+              child: FloatingActionButton(
+                onPressed: () {
+                  setState(() {
+                    portData._text = "";
+                    portData._textController.add("");
+                    portData._lines = "";
+                    portData._linesController.add("");
+                  });
+                },
+                tooltip: "Clear screen",
+                child: Icon(Icons.clear),
+              ),
+            )
+          : Padding(
+              padding: EdgeInsets.all(8.0),
+            ),
     );
   }
 }
