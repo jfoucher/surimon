@@ -49,7 +49,7 @@ class MyHomePage extends StatefulWidget {
 class PortData {
   SerialPort? port;
 
-  // TODO refactor this to convert the serial data to the strings only once when the data arrives
+
   Stream get lines => _linesController.stream;
 
   Stream get text => _textController.stream;
@@ -128,6 +128,7 @@ class PortData {
       reader?.close();
       port?.close();
       port?.dispose();
+      port = null;
     });
 
     reader?.stream.listen((data) {
@@ -432,28 +433,24 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Builder(builder: (context) {
                   if (portData._error != null) {
                     return Center(
-                        child: Text(
-                      'Serial error: ${portData._error}',
-                      style: TextStyle(
+                      child: Text(
+                        'Serial error: ${portData._error}',
+                        style: TextStyle(
                           fontSize: 24,
-                          color: Color.fromARGB(255, 247, 33, 108)),
+                          color: Color.fromARGB(255, 247, 33, 108)
+                        ),
                     ));
                   }
                   if (portData.port == null) {
                     return Center(
-                        child: Text(
-                      textAlign: TextAlign.center,
-                      "No Serial port connected",
-                      style: TextStyle(fontSize: 24),
-                    ));
+                      child: Text(
+                        textAlign: TextAlign.center,
+                        "No Serial port connected",
+                        style: TextStyle(fontSize: 24),
+                      )
+                    );
                   }
-                  // if (portData._text.isEmpty) {
-                  //   return Center(
-                  //       child: Text(
-                  //     "No data received yet",
-                  //     style: TextStyle(fontSize: 24),
-                  //   ));
-                  // }
+
                   return SingleChildScrollView(
                     reverse: true,
                     scrollDirection: Axis.vertical,
