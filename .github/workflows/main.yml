@@ -91,5 +91,5 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "build/linux_build.tar.gz"
+          artifacts: "build/linux/x64/release/surimon.tar.gz"
           tag: v${{ env.VERSION }}
