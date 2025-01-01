@@ -1,6 +1,6 @@
 # Surimon
 
-<img src="assets/icon.png" style="max-width: 150px" />
+<img src="assets/icons/eu.sixpixels.Surimon.svg" style="max-width: 150px" />
 
 Surimon connect to serial ports and allows you to interact with them.
 

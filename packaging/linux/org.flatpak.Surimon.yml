@@ -1,0 +1,36 @@
+app-id: eu.sixpixels.Surimon
+runtime: org.freedesktop.Platform
+runtime-version: "22.08"
+sdk: org.freedesktop.Sdk
+command: surimon
+separate-locales: false
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --socket=pulseaudio
+  - --share=network
+modules:
+  # Surimon
+  - name: Surimon
+    buildsystem: simple
+    only-arches:
+      - x86_64
+    build-commands:
+      - "mkdir -p Surimon"
+      - cp -R build/linux/x64/release/bundle/ Surimon
+      - mv Surimon /app/
+      - mkdir -p /app/bin
+      - ln -s /app/Surimon/surimon /app/bin/surimon
+      - mkdir -p /app/share/icons/hicolor/scalable/apps
+      - cp -r assets/icons/eu.sixpixels.Surimon.svg /app/share/icons/hicolor/scalable/apps/
+      - desktopFileDir=/app/share/applications
+      - mkdir -p /app/share/applications
+      - cp -r packaging/linux/eu.sixpixels.Surimon.desktop /app/share/applications/
+      - metadataDir=/app/share/metainfo
+      - mkdir -p /app/share/metainfo
+      - cp -r packaging/linux/eu.sixpixels.Surimon.metainfo.xml /app/share/metainfo/
+    sources:
+      - type: dir
+        path: build/linux/x64/release/bundle/

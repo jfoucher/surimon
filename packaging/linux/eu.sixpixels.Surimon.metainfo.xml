@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Generator for metainfo & .desktop files:
+    https://www.freedesktop.org/software/appstream/metainfocreator/#/
+-->
+<component type="desktop-application">
+    <id>eu.sixpixels.Surimon</id>
+    <name>Surimon</name>
+    <summary>A serial monitor</summary>
+    <developer_name>Jonathan Foucher</developer_name>
+    <url type="homepage">https://github.com/jfoucher/surimon</url>
+    <metadata_license>MIT</metadata_license>
+    <project_license>MIT</project_license>
+    <supports>
+        <control>pointing</control>
+        <control>keyboard</control>
+        <control>touch</control>
+    </supports>
+    <description>
+        <p>Performant and good looking serial monitor</p>
+        <p>Features</p>
+        <ul>
+            <li>Auto-reconnect</li>
+            <li>Can change port</li>
+            <li>Can set baud rate</li>
+            <li>Can set parity</li>
+            <li>and also stop bits</li>
+            <li>show line numbers</li>
+            <li>Light and dark themes</li>
+        </ul>
+    </description>
+    <launchable type="desktop-id">eu.sixpixels.Surimon.desktop</launchable>
+    <screenshots>
+        <screenshot type="default">
+            <image>https://raw.githubusercontent.com/jfoucher/surimon/main/screenshot.png</image>
+        </screenshot>
+    </screenshots>
+    <content_rating type="oars-1.1" />
+    <releases>
+        <release version="1.0.0" date="2022-02-25" />
+    </releases>
+</component>

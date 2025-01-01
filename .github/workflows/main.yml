@@ -62,6 +62,18 @@ jobs:
           path: |
             build/linux/x64/release/surimon.tar.gz
 
+      - name: Build .flatpak
+        uses: bilelmoussaoui/flatpak-github-actions/flatpak-builder@v5
+        with:
+          bundle: Surimon.flatpak
+          manifest-path: packaging/linux/com.example.FlutterApp.yml
+
+      - name: Upload .flatpak artifact to workflow
+        uses: actions/upload-artifact@v3
+        with:
+          name: Flatpak artifact
+          path: Surimon.flatpak
+
         #10 Extract Version
       - name: Extract version from pubspec.yaml
         id: extract_version
@@ -91,5 +103,5 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "build/linux/x64/release/surimon.tar.gz"
+          artifacts: "build/linux/x64/release/surimon.tar.gz,Surimon.flatpak"
           tag: v${{ env.VERSION }}

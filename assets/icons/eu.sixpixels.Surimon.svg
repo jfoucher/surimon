@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="200mm"
+   height="200mm"
+   viewBox="0 0 200 200"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4 (e7c3feb100, 2024-10-09)"
+   sodipodi:docname="eu.sixpixels.Surimon.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.98795595"
+     inkscape:cx="396.77882"
+     inkscape:cy="395.26054"
+     inkscape:window-width="2256"
+     inkscape:window-height="1427"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <rect
+       x="211.5479"
+       y="106.28004"
+       width="397.79102"
+       height="243.938"
+       id="rect3" />
+    <rect
+       x="206.48694"
+       y="153.85301"
+       width="75.914314"
+       height="49.597355"
+       id="rect2" />
+    <rect
+       x="211.5479"
+       y="106.28004"
+       width="397.79102"
+       height="243.938"
+       id="rect6" />
+    <filter
+       inkscape:collect="always"
+       style="color-interpolation-filters:sRGB"
+       id="filter6"
+       x="-0.020337365"
+       y="-0.016265917"
+       width="1.0406747"
+       height="1.0325318">
+      <feGaussianBlur
+         inkscape:collect="always"
+         stdDeviation="0.1445857"
+         id="feGaussianBlur6" />
+    </filter>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="font-variation-settings:'wght' 600;opacity:1;fill:#b3c7ff;fill-opacity:1;stroke:none;stroke-width:9.63874;stroke-dasharray:none"
+       id="rect7"
+       width="200.321"
+       height="199.78537"
+       x="5.4283767e-08"
+       y="0.26780856"
+       ry="0.47596499" />
+    <path
+       style="font-size:21.3333px;font-family:'CG pixel 4x5';-inkscape-font-specification:'CG pixel 4x5, @wght=600';font-variation-settings:'wght' 600;white-space:pre;fill:#6f4700;stroke-width:1.28684;filter:url(#filter6)"
+       d="m 211.54883,130.27926 v -4.26562 h 12.79685 v 4.26562 z m 12.79685,-4.26562 v -4.26562 h 4.26562 v 4.26562 z m -8.53123,-4.26562 v -4.26562 h 8.53123 v 4.26562 z m -4.26562,-4.26562 v -4.26561 h 4.26562 v 4.26561 z m 4.26562,-4.26561 v -4.27083 h 12.79685 v 4.27083 z"
+       id="text6"
+       transform="matrix(8.3821083,0,0,7.2044359,-1744.8082,-760.89262)"
+       aria-label="s&#10;" />
+    <text
+       xml:space="preserve"
+       style="font-size:5.64444px;font-family:Dosis;-inkscape-font-specification:'Dosis, @wght=600';font-variation-settings:'wght' 600;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;white-space:pre;inline-size:37.8851;display:inline;opacity:0.0834876;fill:#202020;stroke:#000000;stroke-width:0.1"
+       x="61.328224"
+       y="121.3174"
+       id="text1"><tspan
+         x="61.328224"
+         y="121.3174"
+         id="tspan3">S</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="scale(0.26458333)"
+       id="text2"
+       style="font-size:21.3333px;font-family:Dosis;-inkscape-font-specification:'Dosis, @wght=600';font-variation-settings:'wght' 600;text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect2);display:inline;opacity:0.0834876;fill:#202020;stroke:#000000;stroke-width:0.377953" />
+    <path
+       style="font-size:21.3333px;font-family:'CG pixel 4x5';-inkscape-font-specification:'CG pixel 4x5, @wght=600';font-variation-settings:'wght' 600;white-space:pre;fill:#e19000;stroke-width:1.28684"
+       d="m 211.54883,130.27926 v -4.26562 h 12.79685 v 4.26562 z m 12.79685,-4.26562 v -4.26562 h 4.26562 v 4.26562 z m -8.53123,-4.26562 v -4.26562 h 8.53123 v 4.26562 z m -4.26562,-4.26562 v -4.26561 h 4.26562 v 4.26561 z m 4.26562,-4.26561 v -4.27083 h 12.79685 v 4.27083 z"
+       id="text3"
+       transform="matrix(8.3821083,0,0,7.2044359,-1750.4322,-768.39127)"
+       aria-label="s&#10;" />
+  </g>
+</svg>
