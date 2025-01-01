@@ -93,4 +93,3 @@ jobs:
         with:
           artifacts: "build/linux_build.tar.gz"
           tag: v${{ env.VERSION }}
-          token: ${{ secrets.TOKEN }}
