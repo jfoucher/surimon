@@ -44,9 +44,9 @@ jobs:
 
         #4 Install Dependencies
       - name: Install Dependencies
-        run: sudo apt-get install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev ninja
+        run: sudo apt-get install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
 
-      - name: Build minux
+      - name: Build linux
         run: flutter build linux --release
 
       - name: Compress Files
